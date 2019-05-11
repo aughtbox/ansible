@@ -1,0 +1,11 @@
+[edms]
+edms 
+
+[edms:vars]
+ansible_host=edms.lxd
+ansible_user=ubuntu
+ansible_private_key_file=/home/ubuntu/.ssh/id_rsa
+
+[secrets:children]
+edms
+

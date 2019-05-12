@@ -8,3 +8,14 @@
   with_items:
     - redis-server
 
+- name: Redis config
+  become: yes
+  become_method: sudo
+  template:
+    src=redis.conf.j2
+    dest=/etc/redis/redis.conf
+    owner=redis
+    group=redis
+  notify:
+    - restart redis
+

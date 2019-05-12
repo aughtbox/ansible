@@ -7,7 +7,8 @@
     - role: common
     - role: postgres
       postgresql_version: 9.4
-    - role: redis      
+    - role: redis
+    - role: mayan
   tasks:
     - name: install postgres client dependencies
       apt: >
@@ -48,3 +49,29 @@
         roles=mayan
       when: mayan_db_create.changed
 
+    - name: Mayan Initialsetup
+      become: yes
+      become_user: "{{ mayan_user }}"
+      shell: >
+        MAYAN_DATABASE_ENGINE=django.db.backends.postgresql 
+        MAYAN_DATABASE_NAME=mayan 
+        MAYAN_DATABASE_PASSWORD={{ mayan_db_password }} 
+        MAYAN_DATABASE_USER=mayan 
+        MAYAN_DATABASE_HOST=127.0.0.1 
+        MAYAN_MEDIA_ROOT={{ mayan_dest_dir }}/mayan-edms/media
+        /opt/mayan-edms/bin/mayan-edms.py initialsetup
+      when: mayan_db_create.changed
+
+    - name: Mayan collect static files
+      become: yes
+      become_user: "{{ mayan_user }}"
+      shell: >
+        MAYAN_MEDIA_ROOT={{ mayan_dest_dir}}/mayan-edms/media
+        /opt/mayan-edms/bin/mayan-edms.py collectstatic --noinput
+      when: mayan_db_create.changed
+
+    - name: supervisor - Install mayan app configuration
+      template: >
+        src=mayan.conf.j2
+        dest=/etc/supervisor/conf.d/mayan.conf
+      when: ansible_distribution == 'Ubuntu'

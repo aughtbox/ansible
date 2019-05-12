@@ -1,0 +1,73 @@
+---
+- name: Install mayan dependencies
+  apt: >
+    name="{{item}}"
+    state=present
+  with_items: [
+    "g++",
+    "gcc",
+    "ghostscript",
+    "gnupg1",
+    "graphviz",
+    "libfuse2",
+    "libjpeg-dev",
+    "libmagic1",
+    "libpq-dev",
+    "libpng-dev",
+    "libreoffice",
+    "libtiff-dev",
+    "poppler-utils",
+    "postgresql",
+    "python-dev",
+    "python-virtualenv",
+    "redis-server",
+    "sane-utils",
+    "supervisor",
+    "tesseract-ocr",
+    "zlib1g-dev"]
+
+- name: Ensure /opt exists
+  file: >
+    path="{{ mayan_dest_dir }}"
+    state=directory
+
+- name: Ensure log directory exists
+  file: >
+    path="/var/log/mayan"
+    state=directory
+
+- name: install virtualenv
+  apt: >
+    pkg=virtualenv
+    state=latest
+    update_cache=yes
+    cache_valid_time={{ apt_cache_valid_time }}
+
+- name: Mayan user
+  become: yes
+  become_method: sudo
+  user:
+    name={{ mayan_user }}
+    password=!
+    create_home=False
+
+- name: Create virtualenv for mayan-edms
+  pip: >
+    chdir="{{ mayan_dest_dir }}"
+    name={{ item }}
+    state=present
+    virtualenv="{{ mayan_dest_dir }}/mayan-edms"
+  with_items:
+    - mayan-edms
+    - psycopg2
+    - redis
+
+- name: Mayan directory permissions
+  file: >
+    state=directory
+    owner={{ mayan_user }}
+    group={{ mayan_group }}
+    recurse=yes
+    path={{ mayan_dest_dir }}/mayan-edms
+
+

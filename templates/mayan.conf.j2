@@ -1,0 +1,64 @@
+[supervisord]
+environment=
+    MAYAN_ALLOWED_HOSTS='["*"]',  # Allow access to other network hosts other than localhost
+    MAYAN_CELERY_RESULT_BACKEND="redis://127.0.0.1:6379/0",
+    MAYAN_BROKER_URL="redis://127.0.0.1:6379/0",
+    PYTHONPATH={{ mayan_dest_dir }}/mayan-edms/lib/python2.7/site-packages:{{ mayan_dest_dir }}/mayan-edms/data,
+    MAYAN_MEDIA_ROOT={{ mayan_dest_dir }}/mayan-edms/media,
+    MAYAN_DATABASE_ENGINE=django.db.backends.postgresql,
+    MAYAN_DATABASE_HOST=127.0.0.1,
+    MAYAN_DATABASE_NAME={{ mayan_db_name }},
+    MAYAN_DATABASE_PASSWORD={{ mayan_db_password }},
+    MAYAN_DATABASE_USER={{ mayan_db_user }},
+    MAYAN_DATABASE_CONN_MAX_AGE=60,
+    DJANGO_SETTINGS_MODULE=mayan.settings.production
+
+[program:mayan-gunicorn]
+autorestart = true
+autostart = true
+command = {{ mayan_dest_dir }}/mayan-edms/bin/gunicorn -w 2 mayan.wsgi --max-requests 500 --max-requests-jitter 50 --worker-class gevent --bind 0.0.0.0:8000 --timeout 120
+user = mayan
+
+[program:mayan-worker-fast]
+autorestart = true
+autostart = true
+command = nice -n 1 {{ mayan_dest_dir }}/mayan-edms/bin/mayan-edms.py celery worker -Ofair -l ERROR -Q converter,sources_fast -n mayan-worker-fast.%%h --concurrency=1
+killasgroup = true
+numprocs = 1
+priority = 998
+startsecs = 10
+stopwaitsecs = 1
+user = mayan
+
+[program:mayan-worker-medium]
+autorestart = true
+autostart = true
+command = nice -n 18 {{ mayan_dest_dir }}/mayan-edms/bin/mayan-edms.py celery worker -Ofair -l ERROR -Q checkouts_periodic,documents_periodic,indexing,metadata,sources,sources_periodic,uploads,documents -n mayan-worker-medium.%%h --concurrency=1
+killasgroup = true
+numprocs = 1
+priority = 998
+startsecs = 10
+stopwaitsecs = 1
+user = mayan
+
+[program:mayan-worker-slow]
+autorestart = true
+autostart = true
+command = nice -n 19 {{ mayan_dest_dir }}/mayan-edms/bin/mayan-edms.py celery worker -Ofair -l ERROR -Q mailing,tools,statistics,parsing,ocr -n mayan-worker-slow.%%h --concurrency=1
+killasgroup = true
+numprocs = 1
+priority = 998
+startsecs = 10
+stopwaitsecs = 1
+user = mayan
+
+[program:mayan-celery-beat]
+autorestart = true
+autostart = true
+command = nice -n 1 {{ mayan_dest_dir }}/mayan-edms/bin/mayan-edms.py celery beat --pidfile= -l ERROR
+killasgroup = true
+numprocs = 1
+priority = 998
+startsecs = 10
+stopwaitsecs = 1
+user = mayan

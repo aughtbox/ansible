@@ -9,6 +9,7 @@
       postgresql_version: 9.4
     - role: redis
     - role: mayan
+    # - role: nginx
   tasks:
     - name: install postgres client dependencies
       apt: >
@@ -49,6 +50,13 @@
         roles=mayan
       when: mayan_db_create.changed
 
+    - name: Install Mayan configuration
+      become: yes
+      become_user: "{{ mayan_user }}"
+      template: >
+        src=mayan/config.yml.j2
+        dest={{ mayan_dest_dir}}/mayan-edms/media/config.yml
+
     - name: Mayan Initialsetup
       become: yes
       become_user: "{{ mayan_user }}"
@@ -60,7 +68,6 @@
         MAYAN_DATABASE_HOST=127.0.0.1 
         MAYAN_MEDIA_ROOT={{ mayan_dest_dir }}/mayan-edms/media
         /opt/mayan-edms/bin/mayan-edms.py initialsetup
-      when: mayan_db_create.changed
 
     - name: Mayan collect static files
       become: yes
@@ -68,10 +75,24 @@
       shell: >
         MAYAN_MEDIA_ROOT={{ mayan_dest_dir}}/mayan-edms/media
         /opt/mayan-edms/bin/mayan-edms.py collectstatic --noinput
-      when: mayan_db_create.changed
+
 
     - name: supervisor - Install mayan app configuration
       template: >
-        src=mayan.conf.j2
+        src=supervisor/mayan.conf.j2
         dest=/etc/supervisor/conf.d/mayan.conf
       when: ansible_distribution == 'Ubuntu'
+
+    # - name: install nginx config
+    #   template: >
+    #     src=nginx/mayan.conf.j2
+    #     dest=/etc/nginx/sites-available/mayan.conf
+    
+    # - name: enable nginx config
+    #   file: >
+    #     src=/etc/nginx/sites-available/mayan.conf
+    #     dest=/etc/nginx/sites-enabled/mayan.conf
+    #     state=link
+    #     force=yes
+    #   notify: restart nginx
+

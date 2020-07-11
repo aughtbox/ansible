@@ -1,0 +1,72 @@
+---
+- name: Configure Mayan
+  hosts: edms
+  become: true
+  become_method: sudo
+  roles:
+    - role: mayan
+  tasks:
+    - name: Ensure dumps directory
+      become: yes
+      become_user: mayan
+      file: >
+        path={{ mayan_dest_dir }}/mayan-edms/backups/dumps
+        state=directory
+    
+    - name: Ensure backup media directory
+      become: yes
+      become_user: mayan
+      file: >
+        path={{ mayan_dest_dir }}/mayan-edms/backups/media
+        state=directory
+
+#- name: upload media
+#  become: yes
+#  become_user: mayan
+#  copy: >
+#    src=backups/edms/media
+#    dest={{ mayan_dest_dir }}/mayan-edms/media
+#
+    - name: upload media
+      become: yes
+      become_user: mayan
+      synchronize: >
+        src=backups/edms/media/
+        dest={{ mayan_dest_dir }}/mayan-edms/media
+    
+    - name: fix owner of media files
+      become: yes
+      become_method: sudo
+      file: >
+        state=directory
+        owner={{ mayan_user }}
+        group={{ mayan_group }}
+        recurse=yes
+        path={{ mayan_dest_dir }}/mayan-edms/media
+    
+    # this over rides backedup config... should it ?
+    - name: Install Mayan configuration
+      become: yes
+      become_user: "{{ mayan_user }}"
+      template: >
+        src=mayan/config.yml.j2
+        dest={{ mayan_dest_dir}}/mayan-edms/media/config.yml
+
+
+    - name: upload sql dump
+      become: yes
+      become_user: mayan
+      copy: >
+        src=backups/edms/2019-05-15_21-01-18.sql
+        dest={{ mayan_dest_dir }}/mayan-edms/backups/dumps
+
+    - name: Execute restore
+      become: yes
+      become_user: mayan
+      postgresql_db: >
+        name={{ mayan_db_name }}
+        login_user=mayan
+        login_password={{ mayan_db_password }}
+        state=restore
+        target={{ mayan_dest_dir }}/mayan-edms/backups/dumps/2019-05-15_21-01-18.sql
+    

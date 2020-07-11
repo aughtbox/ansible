@@ -59,8 +59,9 @@
     virtualenv="{{ mayan_dest_dir }}/mayan-edms"
   with_items:
     - mayan-edms
-    - psycopg2
-    - redis
+    - psycopg2==2.7.3.2
+    - redis==2.10.6
+    - librabbitmq==2.0.0
 
 - name: Mayan directory permissions
   file: >
